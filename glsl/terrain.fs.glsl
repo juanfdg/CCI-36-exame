@@ -9,14 +9,14 @@ varying vec2 vUv;
 const vec3 SKY_COL = vec3(0.76,0.94, 1.0);
 const vec3 MTN_COL = vec3(0.4, 0.2, 0.0);
 const vec3 ICE_COL = vec3(0.9, 0.9, 1.0);
-const vec3 LIGHT_COL = vec3(0.95, 1.0, 0.89); // white, slightly yellow light
+const vec3 LIGHT_COL = vec3(0.95, 1.0, 0.89);
 
 const float FOG_DENSITY = -0.04;
-const float SKY = -1.0; // materialID for sky
-const vec3 EPS = vec3(0.001, 0.0, 0.0); // smaller values = more detail when normalizing
-const float MAX_DIST = 60.0; // used when ray casting to limit ray length
-const int RAYS = 30; // number of rays cast, set lower if framerate slows
-const int FREQUENCY = 15; // try lower values if framerate issues encountered
+const float SKY = -1.0;
+const vec3 EPS = vec3(0.001, 0.0, 0.0);
+const float MAX_DIST = 60.0;
+const int RAYS = 30;
+const int FREQUENCY = 10;
 
 // the following are used in terrain function
 const float START_HEIGHT = 0.4;
@@ -24,7 +24,7 @@ const float WEIGHT = 0.6;
 const float MULT = 0.35;
 
 // Simple 2d noise algorithm from http://shadertoy.wikia.com/wiki/Noise
-float noise( vec2 position ) {
+float noise(vec2 position) {
   vec2 f = fract(position);
   position = floor(position);
   float v = position.x+position.y*1000.0;
