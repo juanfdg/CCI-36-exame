@@ -40,6 +40,11 @@ resize();
 window.onscroll = function () {
      window.scrollTo(0,0);
 };
+
+// WORLD COORDINATE FRAME: other objects are defined with respect to it
+const worldFrame = new THREE.AxesHelper(5) ;
+worldFrame.visible = false;
+scene.add(worldFrame);
  
 // MATERIALS: specifying uniforms and shaders
 const terrainMaterial = new THREE.ShaderMaterial({
@@ -64,10 +69,22 @@ new THREE.SourceLoader().load(shaderFiles, shaders => {
 
 const terrainGeometry = new THREE.PlaneGeometry(16, 9);
 const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+terrain.parent = worldFrame;
 scene.add(terrain);
 console.log(terrain);
 
-const startTime = Date.now();
+// MONITOR
+monitor = null;
+new THREE.OBJLoader().load(
+    'obj/monitor.obj',
+    object => {
+      monitor = object;
+      monitor.scale.setScalar(0.27);
+      monitor.position.set(-35.1,-8,37.9);
+      scene.add(object);
+    },
+    xhr => console.log(`${xhr.loaded / xhr.total * 100}% loaded`),
+    error => console.log(`Error: ${error}`));
 
 // LISTEN TO KEYBOARD
 const keyboard = new THREEx.KeyboardState();
@@ -89,6 +106,8 @@ function checkKeyboard() {
 }
 
 // SETUP UPDATE CALL-BACK
+const startTime = Date.now();
+
 (function update() {
   checkKeyboard();
   terrainMaterial.uniforms.uTime.value = (Date.now()-startTime)/1000.;
