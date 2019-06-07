@@ -40,7 +40,7 @@ float terrain(vec2 position, int freq) {
   float weight = WEIGHT;
   float multiplier = MULT;
   for (int i = 0; i < freq; i++) {
-    height += weight * noise(position * multiplier) * sin(uTime/3.14);
+    height += weight * noise(position * multiplier) * noise(vec2(uTime/1.5));
     weight *= 0.5;
     multiplier *= 2.0;
   }
