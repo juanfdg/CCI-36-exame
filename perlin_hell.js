@@ -2,7 +2,7 @@
 if ( WEBGL.isWebGL2Available() === false ) {
   document.body.appendChild( WEBGL.getWebGL2ErrorMessage() );
 }
- 
+
 // SETUP RENDERER & SCENE
 const container = document.createElement( 'div' );
 document.body.appendChild( container );
@@ -62,16 +62,18 @@ scene.background = cubeTexture;
 // SETUP CAMERA
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 camera.position.x = 0;
-camera.position.y = 0;
-camera.position.z = 20;
+camera.position.y = 15;
+camera.position.z = 50;
 camera.up = new THREE.Vector3(0,1,0);
-camera.lookAt(new THREE.Vector3(0, 0, 0));
+camera.lookAt(new THREE.Vector3(0, 10, 0));
 
 // SETUP ORBIT CONTROLS OF THE CAMERA
 const controls = new THREE.OrbitControls(camera);
 controls.damping = 0.2;
 controls.autoRotate = false;
 controls.keys = { LEFT: 65, UP: 87, RIGHT: 68, BOTTOM: 83};
+controls.mouseButtons['ORBIT'] = THREE.MOUSE.MIDDLE;
+controls.noZoom = true;
  
 // ADAPT TO WINDOW RESIZE
 function resize() {
@@ -88,75 +90,61 @@ resize();
 const textureLoader = new THREE.TextureLoader();
 
 // ADD SCENE TERRAIN
-const terrainGeometry = new THREE.Geometry();
-
-const HEIGHT = 10;
-const WIDTH = 400, LENGTH = 400
-const RECT_WIDTH = 1, RECT_LENGTH = 1;
+const DEPTH = 30;
+const WIDTH = 200, LENGTH = 200
+const RECT_WIDTH = 4, RECT_LENGTH = 4;
 const TERR_WIDTH = WIDTH * RECT_WIDTH, TERR_LENGTH = LENGTH * RECT_LENGTH;
 
 const numSlots = 4*WIDTH*LENGTH
 let fireSlots = [null*numSlots];
 
-// ADD VERTEXES
-for (i=0; i<WIDTH; i++) {
-  for (j=0; j<LENGTH; j++) {
-    terrainGeometry.vertices.push(new THREE.Vector3(RECT_WIDTH*(i-WIDTH/2), 
-                                                    -HEIGHT+Math.sin(Math.PI*i/12.5), 
-                                                    RECT_LENGTH*(j-LENGTH/2))),
-	  terrainGeometry.colors.push(new THREE.Color(0xff0000)) 
-  }
-}
-
-// ADD FACES AND UVS
-terrainGeometry.faceVertexUvs= new Array()
-terrainGeometry.faceVertexUvs.push(new Array())
-  
-for (i=0; i<WIDTH-1; i++) {
-  for (j=0; j<LENGTH-1; j++) {
-    face = new THREE.Face3(i*LENGTH+j, i*WIDTH+j+1, 
-    i*LENGTH+j+LENGTH)
-    terrainGeometry.faces.push(face)
-	  face.vertexColors[0]=terrainGeometry.colors[i*LENGTH+j];
-	  face.vertexColors[1]=terrainGeometry.colors[i*LENGTH+j+1];
-	  face.vertexColors[2]=terrainGeometry.colors[i*LENGTH+j+LENGTH];
-
-    terrainGeometry.faceVertexUvs[0].push( [
-	    new THREE.Vector2(i/WIDTH,j/LENGTH),
-	    new THREE.Vector2(i/WIDTH,(j+1)/LENGTH),
-	    new THREE.Vector2((i+1)/WIDTH,j/LENGTH),]
- 	  )
-	  
-    face = new THREE.Face3(i*LENGTH+j+LENGTH+1,  i*LENGTH+j+LENGTH, 
-    i*LENGTH+j+1,)
-	  terrainGeometry.faces.push(face)
-	
-    terrainGeometry.faceVertexUvs[0].push( [
-	    new THREE.Vector2((i+1)/WIDTH,(j+1)/LENGTH),
-	    new THREE.Vector2((i+1)/WIDTH,(j)/LENGTH),
-	    new THREE.Vector2((i)/WIDTH,(j+1)/LENGTH),]
- 	  )
-  }
-}
-
-terrainGeometry.computeFaceNormals()
-terrainGeometry.computeVertexNormals()
-	
-const terrain = new THREE.Mesh(terrainGeometry, 
-  new THREE.MeshBasicMaterial({
-    vertexColors: THREE.VertexColors,
-	  flatShading: true,
+const terrainGeometry = new THREE.PlaneBufferGeometry(TERR_WIDTH, TERR_LENGTH, WIDTH, LENGTH);
+const terrainTexture = new THREE.MeshBasicMaterial({
     side: THREE.DoubleSide,
-	  //color:0x00f5f5,
-    map: new textureLoader.load('images/floor.jpg'),
-	}));
-
+    map: new textureLoader.load('images/floor.jpg')
+	})
+const terrain = new THREE.Mesh(terrainGeometry, terrainTexture);
+terrain.rotation.x = -Math.PI / 2;
+terrain.position.y = -DEPTH;
+terrain.updateMatrix();
+scene.add(terrain);
 terrain.matrixAutoUpdate = false;
 
-scene.add(terrain);
+// PERLIN NOISE
+const peak = 30;
+const smoothing = 300;
+const vertices = terrain.geometry.attributes.position.array;
+const perlin = new SimplexNoise()
+for (let i = 0; i <= vertices.length; i += 3) {
+    vertices[i+2] = peak * perlin.noise(
+        vertices[i]/smoothing, 
+        vertices[i+1]/smoothing
+    );
+}
+terrain.geometry.attributes.position.needsUpdate = true;
+terrain.geometry.computeVertexNormals();
 
-const axesHelper = new THREE.AxesHelper(5);
-scene.add( axesHelper );
+// RANDOM FIRE DISTRIBUTION
+const fireTex = textureLoader.load('images/fire.png');
+
+const FOCUS_PROB = 0.99;
+const focuses = new Array();
+
+for (let i = 0; i <= vertices.length; i+=3) {
+  let prob = Math.random();
+  if (prob > FOCUS_PROB) {
+    let fire = new THREE.Fire(fireTex, new THREE.BoxBufferGeometry(1.0, 1.0, 1.0));
+
+    fire.scale.multiplyScalar(20);
+    fire.position.x = vertices[i];
+    fire.position.y = vertices[i+2] - DEPTH;
+    fire.position.z = vertices[i+1];
+    fire.matrixAutoUpdate = false;
+    fire.updateMatrix();
+    focuses.push(fire);
+    scene.add(fire);
+  }
+}
 
 // MOUSE INTERACTION
 let raycaster = new THREE.Raycaster();
@@ -180,55 +168,51 @@ function updateCursor() {
 
 // ADD FIRE BY USER CLICK
 let timer; 
-const fireTex = textureLoader.load('images/fire.png');
-
-function ignite() {
-  let intersects = raycaster.intersectObject(terrain);
-  for (let i = 0; i < intersects.length; i++) {
-    let faceIndex = intersects[i].faceIndex;
-    if (!fireSlots[faceIndex]) {
-      let fire = new THREE.Fire(fireTex, new THREE.BoxGeometry(1.0, 5.0, 1.0));
-      
-      fire.scale.multiplyScalar(20);
-      fire.position.x = intersects[i].point.x;
-      fire.position.y = intersects[i].point.y;
-      fire.position.z = intersects[i].point.z;
-      fire.matrixAutoUpdate = false;
-      fire.updateMatrix();
-      fireSlots[faceIndex] = fire;
-      scene.add(fireSlots[faceIndex]);
-      console.log(fire)
-      console.log(fireSlots[faceIndex])
-    } 
+function ignite(event) {
+  if (event.button == 0) {
+    let intersects = raycaster.intersectObject(terrain);
+    for (let i = 0; i < intersects.length; i++) {
+      let faceIndex = intersects[i].faceIndex;
+      if (!fireSlots[faceIndex]) {
+        let fire = new THREE.Fire(fireTex, new THREE.BoxBufferGeometry(1.0, 1.0, 1.0));
+        
+        fire.scale.multiplyScalar(20);
+        fire.position.x = intersects[i].point.x;
+        fire.position.y = intersects[i].point.y;
+        fire.position.z = intersects[i].point.z;
+        fire.matrixAutoUpdate = false;
+        fire.updateMatrix();
+        fireSlots[faceIndex] = fire;
+        scene.add(fireSlots[faceIndex]);
+      } 
+    }
   }
 }
 
 window.addEventListener('mousemove', updateCursor, false );
-window.addEventListener('mousedown', function(){
-    timer = setInterval(ignite, 10);
-  }, false );
+window.addEventListener('mousedown', function(event){
+    timer = setInterval(() => { ignite(event) }, 10);
+  }, false);
 window.addEventListener('mouseup', function(){ 
     if (timer) {
       clearInterval(timer);
     }
   }, false);
 
-// UNIFORMS
-
-
 // SETUP UPDATE CALL-BACK
 const clock = new THREE.Clock();
 
 (function update() {
-  //let t = 0.2 * Date.now();
   clock.getDelta();
   let t = clock.elapsedTime;
   for (let i = 0; i < numSlots; i++) {
-    if (fireSlots[i]) {
+    if (fireSlots[i]){
       fireSlots[i].update(t);
-    }  
+    }
   }
-  
+  for (let i = 0; i < focuses.length; i++) {
+    focuses[i].update(t);
+  }
   controls.update()
   renderer.render(scene, camera);
   requestAnimationFrame(update);

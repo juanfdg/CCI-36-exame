@@ -1,0 +1,22 @@
+{
+  "name": "exame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "exame.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juanfdg/CCI-36-exame.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/juanfdg/CCI-36-exame/issues"
+  },
+  "homepage": "https://github.com/juanfdg/CCI-36-exame#readme",
+  "dependencies": {
+    "stats.js": "^0.17.0"
+  }
+}

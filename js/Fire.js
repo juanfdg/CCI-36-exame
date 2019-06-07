@@ -13,7 +13,7 @@ THREE.Fire = function ( fireTex, fireGeometry = new THREE.BoxGeometry(1.0, 20.0,
         fragmentShader  : THREE.FireShader.fragmentShader,
 		transparent     : true,
 		depthWrite      : false,
-        depthTest       : false
+        depthTest       : true,
 	} );
 
     // initialize uniforms 
@@ -26,8 +26,6 @@ THREE.Fire = function ( fireTex, fireGeometry = new THREE.BoxGeometry(1.0, 20.0,
     fireMaterial.uniforms.invModelMatrix.value = new THREE.Matrix4();
     fireMaterial.uniforms.scale.value = new THREE.Vector3( 1, 1, 1 );
     fireMaterial.uniforms.seed.value = Math.random() * 19.19;
-
-    console.log(fireGeometry);
 
 	THREE.Mesh.call( this, fireGeometry, fireMaterial );
 };
